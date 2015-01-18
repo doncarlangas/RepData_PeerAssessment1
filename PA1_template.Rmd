@@ -7,19 +7,91 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r}
+setwd("F:/Coursera/Data Science/Reproducible Research/Assessment 1/RepData_PeerAssessment1/")
 
+activityData <- read.csv("Data/Raw/activity.csv")
+
+library(dplyr)
+activity.tbl_df <- tbl_df(activityData)
+```
 
 
 ## What is mean total number of steps taken per day?
+```{r}
+steps.byday <- activity.tbl_df %>%
+    filter(!is.na(steps)) %>%
+    group_by(date) %>%
+    summarize(totalSteps = sum(steps))
 
+hist(steps.byday$totalSteps)
 
+meanSteps <- mean(steps.byday$totalSteps)
+medianSteps <- median(steps.byday$totalSteps)
+    
+```
+
+The mean of total steps taken by day is `r meanSteps` and the median is `r medianSteps`.
 
 ## What is the average daily activity pattern?
+```{r}
+steps.byinterval <- activity.tbl_df %>%
+    filter(steps != "NA") %>%
+    group_by(interval) %>%
+    summarize(totalSteps = mean(steps))
 
 
+plot(steps.byinterval$interval, steps.byinterval$totalSteps, type = 'l')
+
+steps.max <- max(steps.byinterval$totalSteps)
+interval.maxsteps <- steps.byinterval$interval[which(steps.byinterval$totalSteps == steps.max)]
+    
+```
+
+The interval which has the max mean of steps is `r interval.maxsteps` with `r steps.max` steps. 
 
 ## Imputing missing values
+```{r}
+steps.na <- activity.tbl_df %>%
+     filter(is.na(steps)) %>%
+     group_by(date) %>%
+     summarize(totalNA = n())
+steps.na
+
+steps.byinterval <- activity.tbl_df %>%
+     filter(!is.na(steps)) %>%
+     group_by(interval) %>%
+     summarize(steps.mean= round(mean(steps)))
+
+#Imputing missing values
+
+activityImputed.tbl_df <- activity.tbl_df
+
+activityImputed.tbl_df$steps[is.na(activity.tbl_df$steps)] <- rep(steps.byinterval$steps.mean, length(unique(activity.tbl_df$date)))[is.na(activity.tbl_df$steps)]
 
 
+steps.byday <- activityImputed.tbl_df %>%
+    group_by(date) %>%
+    summarize(totalSteps = sum(steps))
+
+hist(steps.byday$totalSteps)
+
+meanSteps <- mean(steps.byday$totalSteps)
+medianSteps <- median(steps.byday$totalSteps)
+
+```
+
+
+The mean of total steps taken by day is `r meanSteps` and the median is `r medianSteps`.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+activity.week <- activityImputed.tbl_df %>%
+     mutate(day = as.factor(ifelse (weekdays(as.Date(date)) %in% c("Sunday","Saturday"),"weekend","weekday"))) %>%
+     group_by(day,interval) %>%
+     summarize(steps.mean = mean(steps))
+library(ggplot2)    
+ggplot(data=activity.week, aes(x=interval, y=steps.mean)) + geom_line() + facet_grid(day ~ .)
+
+```
